@@ -4,9 +4,14 @@ import { useEffect, useState } from "react";
 import { viteReactApp } from "./vite-react-app";
 import { useWebContainer } from "./WebContainer";
 import Link from "next/link";
+import { AnsiUp } from "ansi_up";
+
+const au = new AnsiUp();
 
 export default function Home() {
   const [code, setCode] = useState("");
+  const [terminalOutput, setTerminalOutput] = useState<string[]>([]);
+  const [ready, setReady] = useState(false);
 
   const { webContainer, webContainerURL } = useWebContainer(
     async (webContainer) => {
@@ -22,6 +27,8 @@ export default function Home() {
         new WritableStream({
           write(data) {
             console.log(data);
+            const output = au.ansi_to_html(data);
+            setTerminalOutput((prev) => [...prev, output]);
           },
         })
       );
@@ -35,10 +42,13 @@ export default function Home() {
 
       const devProcess = await webContainer.spawn("npm", ["run", "dev"]);
 
+      setReady(true);
+
       devProcess.output.pipeTo(
         new WritableStream({
           write(data) {
-            console.log(data);
+            const output = au.ansi_to_html(data);
+            setTerminalOutput((prev) => [...prev, output]);
           },
         })
       );
@@ -78,15 +88,26 @@ export default function Home() {
             ? `WebContainer instance instantiated at ${webContainer.workdir}.`
             : "WebContainer instance still booting."}
         </span>
-        {webContainerURL !== null ? (
+        {ready ? (
           <iframe
-            src={webContainerURL}
+            src={webContainerURL ?? "about:blank"}
             height={800}
             width={800}
             className="border-2 rounded m-4 border-black"
           />
         ) : (
-          <div />
+          <div
+            className="flex flex-col border-2 rounded m-4 border-black w-[800px] h-[800px] overflow-y-auto text-sm p-2"
+            ref={(el) => {
+              if (el) {
+                el.scrollTop = el.scrollHeight;
+              }
+            }}
+          >
+            {terminalOutput.map((line, index) => (
+              <div key={index} dangerouslySetInnerHTML={{ __html: line }} />
+            ))}
+          </div>
         )}
       </div>
 
