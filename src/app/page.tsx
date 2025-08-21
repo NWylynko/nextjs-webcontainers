@@ -1,15 +1,20 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { viteReactApp } from "./vite-react-app";
 import { useWebContainer } from "./WebContainer";
 import Link from "next/link";
 
 export default function Home() {
+  const [code, setCode] = useState("");
+
   const { webContainer, webContainerURL } = useWebContainer(
     async (webContainer) => {
       await webContainer.mount(viteReactApp);
 
       console.log("Set up files");
+
+      setCode(await webContainer.fs.readFile("src/App.jsx", "utf-8"));
 
       const installProcess = await webContainer.spawn("npm", ["install"]);
 
@@ -46,9 +51,27 @@ export default function Home() {
       console.log("Started dev server");
     }
   );
+
+  const handleCodeChange = async (
+    e: React.ChangeEvent<HTMLTextAreaElement>
+  ) => {
+    const updatedCode = e.target.value;
+
+    setCode(updatedCode);
+
+    if (webContainer) {
+      await webContainer.fs.writeFile("src/App.jsx", updatedCode);
+    }
+  };
+
   return (
-    <main>
-      <h1>Webcontainers</h1>
+    <main className="flex flex-col items-center justify-center h-screen">
+      <Link
+        href="https://github.com/NWylynko/nextjs-webcontainers"
+        className="underline"
+      >
+        NWylynko/nextjs-webcontainers
+      </Link>
       <div>
         <span>
           {webContainer
@@ -66,12 +89,12 @@ export default function Home() {
           <div />
         )}
       </div>
-      <Link
-        href="https://github.com/NWylynko/nextjs-webcontainers"
-        className="underline"
-      >
-        NWylynko/nextjs-webcontainers
-      </Link>
+
+      <textarea
+        className="border rounded shadow text-sm w-[800px] h-[200px]"
+        value={code}
+        onChange={handleCodeChange}
+      />
     </main>
   );
 }
